@@ -1,21 +1,23 @@
+#==================================== Servers Pre-configuration =========================================
 - name: setting hosts file on all servers
   hosts: all
+  tags: pre-config
   tasks:
 
    - name: setting hosts file
      template:
-      src: host.j2
+      src: hosts.j2
       dest: /etc/hosts
      tags: all
 
    - name: setting hostnames of all servers
      hostname:
       name:   "{{ inventory_hostname }}"
-     tags: all
 
-
+#===================================== Application Servers Configuration =======================================
 - name: wordpress 
   hosts: apps
+  tags: app-server
   tasks:
 
    - name: Adding repository of Glusterfs
@@ -26,13 +28,11 @@
      tags:
       - gluster
 
-
    - name: install apache,php modules,libraries and updating apt
      apt:
       name: "{{item}}"
       state: latest
       update_cache: yes
-
      loop:
       - apache2
       - unzip  
@@ -43,10 +43,8 @@
      tags:
       - wordpress
       - gluster
-
-
      
-   - name: Enable and start  service httpd and ufw 
+   - name: Enable and start  service apache2, ufw, and glusterd 
      service:
       name: "{{item}}"
       enabled: yes
@@ -59,7 +57,7 @@
       - wordpressa
       - gluster
 
-   - name: Allow all access from RFC1918 networks to this host
+   - name: Allow ports 22, 3306, 80, 443
      ufw:
       rule: allow
       state: enabled
@@ -110,8 +108,6 @@
      tags:
       - cluster1
 
-   
-
    - name: Extract wordpress into /var/www/
      unarchive:
       src: https://wordpress.org/latest.zip
@@ -119,7 +115,6 @@
       remote_src: yes
      tags:
       - wordpress
-
 
    - name: Create a directory if it does not exist
      file:
@@ -132,12 +127,10 @@
      tags:
       - wordpress
 
-
    - name: Renaming wp-config
      command: mv /var/www/wordpress/wp-config-sample.php /var/www/wordpress/wp-config.php
      tags:
       - wordpress
-
 
    - name: configuring wp-config.php
      template:
@@ -165,18 +158,24 @@
      tags:
       - wordpress
 
-
-
 #================================ Loadbalacer ============================================
 - name: Loadbalancer Configuration
-  hosts: lb 
+  hosts: lb
+  tags: load-balancer 
   tasks:
+
+   - name: installing epel-release
+     yum:
+      name: epel-release
+      state: latest
 
    - name: installing nginx
      yum:
       name: "{{item}}"
+      enablerepo: "epel"
       state: latest
      loop:
+      - firewalld
       - openssl
       - python-pip  
       - nginx
@@ -197,7 +196,7 @@
      tags:
       - lb
 
-   - name: 
+   - name: create certificate directory
      file:
       path: /etc/ssl/certs
       state: directory
@@ -218,14 +217,20 @@
      tags:
       - lb
 
-
-   
    - name: Generate a Self Signed OpenSSL certificate
      openssl_certificate:
       path: /etc/ssl/certs/ansible.com.crt
       privatekey_path:  /etc/ssl/private/ansible.com.pem
       csr_path: /etc/ssl/certs/www.ansible.com.csr
       provider: selfsigned
+     tags:
+      - lb
+
+   - name: start firewalld
+     service:
+      name: firewalld
+      state: started
+      enabled: yes
      tags:
       - lb
 
@@ -237,7 +242,6 @@
       immediate: yes
      tags:
       - lb
-
 
    - name: configuring apache
      template:
@@ -264,148 +268,130 @@
 #=============================== Database ==================================
 - name: Mysql installation
   hosts: db
+  tags: database
   tasks:
-  - name: Installing mariadb-server
-    apt:
-      pkg: mysql-server
+
+   - name: Installing mysql-server
+     apt:
+      pkg: "{{item}}"
       update_cache: yes
       cache_valid_time: 86400
       state: present
-    tags:
-     - db
+     loop:
+      - mysql-server
+      - python-mysqldb
+      - php-mysql
+      - python
+     tags:
+      - db
 
-  - name: Start MariaDB
-    service:
+   - name: Start mysql
+     service:
       name: mysql
       state: started
       enabled: yes
-    tags:
-     - db
+     tags:
+      - db
 
+   - name: set bind-address
+     lineinfile:
+      path: /etc/mysql/mysql.conf.d/mysqld.cnf
+      regexp: '^bind-address'
+      line: bind-address            = 0.0.0.0
+     tags:
+      - db
 
-  - name: Installing dependencies
-    apt:
-      pkg: [ 'python-mysqldb', 'php-mysql' ]
-      update_cache: yes
-      cache_valid_time: 86400
-      state: present
-    tags:
-     - db
-
-
-  - name: Ensure SELinux is set to enforcing mode
-    lineinfile:
-     path: /etc/mysql/mysql.conf.d/mysqld.cnf
-     regexp: '^bind-address'
-     line: bind-address            = 0.0.0.0
-    tags:
-     - db
-
-
-  - name: restart apache
-    service:
+   - name: restart mysql and ufw
+     service:
       name: "{{item}}"
       state: restarted
-    loop:
+     loop:
       - mysql 
       - ufw
-    tags:
-     - db
+     tags:
+      - db
 
-  - name: Allow all access from RFC1918 networks to this host
-    ufw:
-     rule: allow
-     state: enabled
-     port: "{{ item }}"
-    loop:
+   - name: open port 22, 3306, 80, and 443
+     ufw:
+      rule: allow
+      state: enabled
+      port: "{{ item }}"
+     loop:
       - 22
       - 3306
       - 80
       - 443
-    tags:
-     - db
+     tags:
+      - db
 
-
-  - name: Create mysql database
-    mysql_db:
+   - name: Create mysql database
+     mysql_db:
       name: wordpress_db
       state: present
-      login_unix_socket: /var/run/mysqld/mysqld.sock #path to Unix domain socket for local connection
+      login_unix_socket: /var/run/mysqld/mysqld.sock            #path to Unix domain socket for local connection
+     tags:
+      - db
 
-    tags:
-     - db
-
-  - name: Create mysql user
-    mysql_user:
+   - name: Create mysql user
+     mysql_user:
       name: wordpress_user
       password: 12345678
       priv: '*.*:ALL'
       host: "{{item}}"
-    loop:
-     - localhost
-     - node1.app1.project.com
-     - node2.app1.project.com
-    tags:
-     - db
-#=============================== Nagios ==========================================
-- name: nagios server
+     loop:
+      - localhost
+      - node1.app1.project.com
+      - node2.app1.project.com
+     tags:
+      - db
+
+   - name: Create nagios user
+     mysql_user:
+      name: nagios
+      password: 123456
+      priv: '*.*:ALL'
+
+#================================== Nagios Server =======================================
+- name: nagios server installation
   hosts: nagios
-  gather_facts: no
+  tags: nagios-server
   tasks:
-   - name: Ensure group "somegroup" exists
+
+   - name: Create nagios group
      group:
       name: nagcmd
       state: present
 
-   - name: Pre-configuration
+   - name: Create nagios user
      user:
       name: nagios
       password: $1$2lDCWevR$SdX6VSEYKuEGXwO3JlIFe/
       groups: nagcmd
       append: yes
 
-
-   - name: add nagios to sudoers
+   - name: Add nagios to sudoers
      lineinfile:
       path: /etc/sudoers
       line: "nagios ALL=(ALL) NOPASSWD: ALL"
 
-
-   - name: firewall configs
-     firewalld:
-      port: "{{item}}"
-      permanent: yes
-      state: enabled
-      immediate: yes
-     loop:
-      - 161/udp
-      - 162/udp
-      - 80/tcp
-      - 443/tcp
-      - 5666/tcp
-      - 22/tcp
-
-   - name: Disable SELinux
+   - name: Put SELinux in permissive mode
      selinux:
-      state: disabled
+      policy: targeted
+      state: permissive
 
-
-   - name: installing packages
+   - name: Install epel-release
      yum:
       name: epel-release
       state: latest
 
-
-
-   - name: installing packages
+   - name: Install packages
      yum:
       name: "{{item}}"
       enablerepo: "epel"
       state: latest
      loop:
       - httpd
-      - mariadb-server
-      - mariadb
+      - firewalld
       - php
       - php-mysql
       - gcc
@@ -423,11 +409,9 @@
       - mailx
       - python-pip
 
-   - name: install python dependency
+   - name: Install python dependency
      pip:
       name: passlib
-
-
 
    - name: Enable service httpd, and not touch the state
      service:
@@ -436,14 +420,34 @@
       enabled: yes
      loop:
       - httpd
-      - mariadb
+      - firewalld
 
-   - name: apache user configs
+   - name: Open firewall ports
+     firewalld:
+      port: "{{item}}"
+      permanent: yes
+      state: enabled
+      immediate: yes
+     loop:
+      - 161/tcp
+      - 161/udp
+      - 162/tcp
+      - 162/udp
+      - 80/tcp
+      - 443/tcp
+      - 5666/tcp
+      - 22/tcp
+      - 25/tcp
+      - 25/udp
+      - 465/tcp
+      - 587/tcp
+
+   - name: Add apache user nagcmd group
      user:
       name: apache
       groups: nagcmd
 
-   - name: cloning the repo
+   - name: Download nagios packages from GitHub
      git:
       repo: 'https://github.com/Ahmed-Gebaly/iTi-SystemAdmin40.git'
       dest: /home/nagios/iTi-SystemAdmin40
@@ -451,53 +455,29 @@
       update: yes
      become_user: nagios
 
-   - name: unarchiving
+   - name: Unarchive nagios packages
      unarchive:
       src: "{{item}}"
       dest: /home/nagios/
       remote_src: yes
      loop:
-      - /home/nagios/iTi-SystemAdmin40/Final-Project/Nagios-Server-Packages/nagios-4.4.6.tar.gz
-      - /home/nagios/iTi-SystemAdmin40/Final-Project/Nagios-Server-Packages/nagios-plugins-2.3.3.tar.gz
-      - /home/nagios/iTi-SystemAdmin40/Final-Project/Nagios-Server-Packages/nrpe-4.0.2.tar.gz
-      - /home/nagios/iTi-SystemAdmin40/Final-Project/Nagios-Server-Config.tar.gz
-      - /home/nagios/iTi-SystemAdmin40/Final-Project/Nagios-host-plugins.tar.gz
-
+      - /home/nagios/iTi-SystemAdmin40/Nagios-Server-Packages/nagios-4.4.6.tar.gz
+      - /home/nagios/iTi-SystemAdmin40/Nagios-Server-Packages/nagios-plugins-2.3.3.tar.gz
+      - /home/nagios/iTi-SystemAdmin40/Nagios-Server-Packages/nrpe-4.0.2.tar.gz
+      - /home/nagios/iTi-SystemAdmin40/eventhandlers.tar.gz
      become_user: nagios
 
-   - name: nagios
-     command: chown -R nagios:nagios /usr/local/nagios
-
-
-   - name: copying
-     copy:
-      src: /home/nagios/libexec/eventhandlers
-      dest: /usr/local/nagios/libexec
-      force: yes
-      remote_src: yes
-     become_user: nagios
-     tags: x
-
-   - name: copying
-     copy:
-      src: /home/nagios/etc
-      dest: /usr/local/nagios/
-      force: yes
-      remote_src: yes
-     become_user: nagios
-     tags: x
-
-
-   - name: compiling src code
+   - name: Install Nagios
      command: "{{item}}"
      args:
       chdir: /home/nagios/nagios-4.4.6
      loop:
       - ./configure --with-nagios-group=nagios --with-command-group=nagcmd
       - make all
+     run_once: true
      become_user: nagios
 
-   - name: nagios
+   - name: Nagios make
      command: "{{item}}"
      args:
       chdir: /home/nagios/nagios-4.4.6
@@ -507,57 +487,169 @@
       - make install-init
       - make install-config
       - make install-webconf
+     run_once: true
 
-   - name: nagios plugins
+   - name: Install nagios plugins
      command: "{{item}}"
      args:
       chdir: /home/nagios/nagios-plugins-2.3.3
      loop:
       - ./configure --with-nagios-user=nagios --with-nagios-group=nagios --with-openssl
       - make
+     run_once: true
      become_user: nagios
 
-   - name: nagios plugin making
+   - name: Nagios plugin make
      command: make install
      args:
       chdir: /home/nagios/nagios-plugins-2.3.3
-   - name: nagios NRPE
+     run_once: true
+
+   - name: Install NRPE
      command: "{{item}}"
      args:
       chdir: /home/nagios/nrpe-4.0.2
      loop:
       - ./configure --enable-command-args --with-nagios-user=nagios --with-nagios-group=nagios --with-ssl=/usr/bin/openssl --with-ssl-lib=/usr/lib/x86_64-linux-gnu
       - make all
+     run_once: true
      become_user: nagios
 
-   - name: nagios plugin making
+   - name: Nagios NRPE make
      command: "{{item}}"
      args:
       chdir: /home/nagios/nrpe-4.0.2
      loop:
       - make install
       - make install-inetd
-
-   - name: Ensure SELinux is set to enforcing mode
+     run_once: true    
+ 
+   - name: Add nagios server to nrpe
      lineinfile:
       path: /etc/xinetd.d/nrpe
       regexp: '^    only_from       = 127.0.0.1 '
       line: "    only_from       = 127.0.0.1  {{inventory_hostname}}"
 
-
-   - name: restart xinted
+   - name: Restart xinted service
      service:
       name: xinetd
       state: restarted
 
-   - name: htpasswd
+   - name: Create htpasswd to Nagios Admin
      htpasswd:
       path: /usr/local/nagios/etc/htpasswd.users
       name: nagiosadmin
       password: 123456
+      
+   - name: Copy eventhandlers directory
+     copy:
+      src: /home/nagios/eventhandlers
+      dest: /usr/local/nagios/libexec
+      force: yes
+      remote_src: yes
+      owner: nagios
+      group: nagios
+
+   - name: create /usr/local/nagios/etc/servers directory
+     file:
+      path: /usr/local/nagios/etc/servers
+      state: directory
 
 
-   - name: nagios NRPE
+   - name: uncomment /usr/local/nagios/etc/servers
+     replace:
+      path: /usr/local/nagios/etc/nagios.cfg
+      regexp: '#cfg_dir=/usr/local/nagios/etc/servers'
+      replace: 'cfg_dir=/usr/local/nagios/etc/servers'
+
+   - name: comment /usr/local/nagios/etc/objects/localhost.cfg
+     replace:
+      path: /usr/local/nagios/etc/nagios.cfg
+      regexp: 'cfg_file=/usr/local/nagios/etc/objects/localhost.cfg'
+      replace: '#cfg_file=/usr/local/nagios/etc/objects/localhost.cfg'
+
+   - name: Set Host Global Event Handler
+     replace:
+      path: /usr/local/nagios/etc/nagios.cfg
+      regexp: '#global_host_event_handler=host_ticket=somecommand'
+      replace: 'global_host_event_handler=host_ticket'
+
+   - name: Set Service Global Event Handler
+     replace:
+      path: /usr/local/nagios/etc/nagios.cfg
+      regexp: '^#global_service_event_handler=host_ticket=somecommand'
+      replace: 'global_service_event_handler=service_ticket'
+     tags: mm
+   - name: uncomment eventhandlers variable
+     replace:
+      path: /usr/local/nagios/etc/nagios.cfg
+      regexp: '^#$USER2$=/usr/local/nagios/libexec/eventhandlers$'
+      replace: '$USER2$=/usr/local/nagios/libexec/eventhandlers'
+
+   - name: node1.app1.project.com
+     template:
+      src: nagios-app1.cfg.j2
+      dest: /usr/local/nagios/etc/servers/app1.cfg
+      owner: nagios
+      group: nagios
+      mode: 0664
+     tags: nn
+   - name: node2.app1.project.com
+     template:
+      src: nagios-app2.cfg.j2
+      dest: /usr/local/nagios/etc/servers/app2.cfg
+      owner: nagios
+      group: nagios
+      mode: 0664
+     tags: bb
+   - name: db.project.com
+     template:
+      src: nagios-db.cfg.j2
+      dest: /usr/local/nagios/etc/servers/db.cfg
+      owner: nagios
+      group: nagios
+      mode: 0664
+
+   - name: lb.project.com
+     template:
+      src: nagios-lb.cfg.j2
+      dest: /usr/local/nagios/etc/servers/lb.cfg
+      owner: nagios
+      group: nagios
+      mode: 0664
+
+   - name: nagios.project.com
+     template:
+      src: nagios-nagios.cfg.j2
+      dest: /usr/local/nagios/etc/servers/nagios.cfg
+      owner: nagios
+      group: nagios
+      mode: 0664
+
+   - name: ansible.project.com
+     template:
+      src: nagios-ansible.cfg.j2
+      dest: /usr/local/nagios/etc/servers/ansible.cfg
+      owner: nagios
+      group: nagios
+      mode: 0664
+
+   - name: configuring nagios command file
+     template:
+      src: nagios-commands.cfg.j2
+      dest: /usr/local/nagios/etc/objects/commands.cfg
+      
+   - name: configuring nagios contant file
+     template:
+      src: nagios-contacts.cfg.j2
+      dest: /usr/local/nagios/etc/objects/contacts.cfg
+
+   - name: configuring nagios templates file
+     template:
+      src: nagios-templates.cfg.j2
+      dest: /usr/local/nagios/etc/objects/templates.cfg
+
+   - name: Restart Nagios Services
      command: "{{item}}"
      loop:
       - systemctl daemon-reload
@@ -565,43 +657,30 @@
       - systemctl enable nagios
       - systemctl restart httpd
 
-
-   - name: mail configuration
+   - name: Prepare Google SMTP mail configuration
      lineinfile:
       path: /etc/mail.rc
       line: "{{item}}"
      loop:
-      - "smtp=smtps://smtp.gmail.com:465"
-      - "smtp-auth=login"
-      - "smtp-auth-user=iti.project.2020@gmail.com"
-      - "smtp-auth-password=@itisa40"
-      - "ssl-verify=ignore"
-      - "nss-config-dir=/etc/pki/nssdb/"
+      - "set smtp=smtps://smtp.gmail.com:465"
+      - "set smtp-auth=login"
+      - "set smtp-auth-user=iti.project.2020@gmail.com"
+      - "set smtp-auth-password=@itisa40"
+      - "set ssl-verify=ignore"
+      - "set nss-config-dir=/etc/pki/nssdb/"
 
-#====================================================HOST-NAGIOS-======================================================================
+#======================================== Nagios Centos Host-======================================================================
 
 - name: nagios host playbook
-  hosts: centos
+  hosts: nagios_centos
+  tags: nagios-centos
   tasks:
-   - name: firewall configs
-     firewalld:
-      port: "{{item}}"
-      permanent: yes
-      state: enabled
-      immediate: yes
-     loop:
-      - 80/tcp
-      - 443/tcp
-      - 5666/tcp
-      - 22/tcp
-     tags: host
-
+   
    - name: installing packages
      yum:
       name: epel-release
       state: latest
      tags: host
-
 
    - name: installing packages
      yum:
@@ -615,17 +694,40 @@
       - bc
       - git
      tags: host
-   - name: cloning the repo
-     git:
-      repo: 'https://github.com/Ahmed-Gebaly/iTi-SystemAdmin40.git'
-      dest: /home/nagios/iTi-SystemAdmin40
-      clone: yes
-      update: yes
+
+   - name: firewall configs
+     firewalld:
+      port: "{{item}}"
+      permanent: yes
+      state: enabled
+      immediate: yes
+     loop:
+      - 80/tcp
+      - 443/tcp
+      - 5666/tcp
+      - 22/t     tags: host
      tags: host
 
-   - name: unarchiving
-     unarchive:
-      src: /home/nagios/iTi-SystemAdmin40/Final-Project/Nagios-host-plugins.tar.gz
-      dest: /usr/lib64/nagios/plugins/
-      remote_src: yes
-     tags: host
+#========================================== Nagios Ubuntu Host ==============================================
+- name: Install Nagios on ubuntu
+  hosts: nagios_ubuntu
+  tags: nagios-ubuntu
+  tasks:
+   - name: install needed pacakges
+     apt:
+      name: "{{item}}"
+      state: latest
+      update_cache: yes
+     loop:
+      - nagios-plugins 
+      - nagios-nrpe-server 
+      - sysstat  
+      - bc 
+     
+   - name: Allow ports
+     ufw:
+      rule: allow
+      state: enabled
+      port: 5666
+     tags:
+      - nagios_ubuntu

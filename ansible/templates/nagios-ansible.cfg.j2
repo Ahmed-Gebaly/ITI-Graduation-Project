@@ -1,0 +1,63 @@
+define host {
+        use                             linux-server
+        host_name                       ansible.project.com
+        alias                           Ansible-Master
+        address                         hostvars['ansible.project.com']['ansible_eth1']['ipv4']['address'] }}
+}
+### Check Alive ------------------------------------------------------------
+define service {
+        use                             generic-service
+        host_name                       ansible.project.com
+        service_description             System_Status
+        check_command                   check-host-alive
+}
+### Check number of currently running procs --------------------------------
+define service {
+        use                             generic-service
+        host_name                       ansible.project.com
+        service_description             CPU_Utilization
+        check_command                   check_nrpe!check_procs
+}
+### Check Load Average -------------------------------------------------------
+define service {
+        use                             generic-service
+        host_name                       ansible.project.com
+        service_description             System_Load_Average
+        check_command                   check_nrpe!check_load
+}
+### Check Memory Usage -------------------------------------------------------
+define service {
+        use                             generic-service
+        host_name                       ansible.project.com
+        service_description             Memory_Usage
+        check_command                   check_nrpe!check_mem
+}
+### Check Swap Memory Usage --------------------------------------------------
+define service {
+        use                             generic-service
+        host_name                       ansible.project.com
+        service_description             Swap_Usage
+        check_command                   check_nrpe!check_swap
+}
+
+### Check All mounted Devices ------------------------------------------------
+define service {
+        use                             generic-service
+        host_name                       ansible.project.com
+        service_description             Mounted_Devices
+        check_command                   check_nrpe!check_disk
+}
+### Check Root partition space ------------------------------------------------
+define service {
+        use                             generic-service
+        host_name                       ansible.project.com
+        service_description             Root_Partition
+        check_command                   check_nrpe!check_/_disk
+}
+### Check I/O Statistics ------------------------------------------------------
+define service {
+        use                             generic-service
+        host_name                       ansible.project.com
+        service_description             Disk_I/O_Statistics
+        check_command                   check_nrpe!check_iostat
+}

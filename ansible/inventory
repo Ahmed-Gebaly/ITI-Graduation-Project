@@ -10,3 +10,14 @@ db.project.com
 
 [nagios]
 nagios.project.com
+
+[ansible]
+ansible.project.com
+
+[nagios_ubuntu:children]
+apps
+db
+
+[nagios_centos:children]
+lb
+ansible
