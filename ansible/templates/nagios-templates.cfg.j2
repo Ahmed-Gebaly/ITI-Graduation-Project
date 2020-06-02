@@ -76,7 +76,7 @@ define host {
     notification_period             workhours               ; Linux admins hate to be woken up, so we only notify during the day
                                                             ; Note that the notification_period variable is being overridden from
                                                             ; the value that is inherited from the generic-host template!
-    notification_interval           120                     ; Resend notifications every 2 hours
+    notification_interval           30                      ; Resend notifications every 2 hours
     notification_options            d,u,r                   ; Only send notifications for specific host states
     contact_groups                  admins                  ; Notifications get sent to the admins by default
     register                        0                       ; DON'T REGISTER THIS DEFINITION - ITS NOT A REAL HOST, JUST A TEMPLATE!
@@ -173,11 +173,11 @@ define service {
     is_volatile                     0                       ; The service is not volatile
     check_period                    24x7                    ; The service can be checked at any time of the day
     max_check_attempts              3                       ; Re-check the service up to 3 times in order to determine its final (hard) state
-    check_interval                  10                      ; Check the service every 10 minutes under normal conditions
+    check_interval                  3                       ; Check the service every 10 minutes under normal conditions
     retry_interval                  2                       ; Re-check the service every two minutes until a hard state can be determined
     contact_groups                  admins                  ; Notifications get sent out to everyone in the 'admins' group
     notification_options            w,u,c,r                 ; Send notifications about warning, unknown, critical, and recovery events
-    notification_interval           60                      ; Re-notify about service problems every hour
+    notification_interval           10                      ; Re-notify about service problems every hour
     notification_period             24x7                    ; Notifications can be sent out at any time
     register                        0                       ; DON'T REGISTER THIS DEFINITION - ITS NOT A REAL SERVICE, JUST A TEMPLATE!
 }

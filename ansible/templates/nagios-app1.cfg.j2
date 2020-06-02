@@ -2,7 +2,7 @@ define host {
         use                             linux-server
         host_name                       node1.app1.project.com
         alias                           Node1-App1
-        address                          hostvars[node1.app1.project.com]['ansible_eth1']['ipv4']['address'] }}
+        address                         hostvars[node2.app1.project.com]['ansible_eth1']['ipv4']['address'] }}
 }
 ### Check Alive ------------------------------------------------------------
 define service {

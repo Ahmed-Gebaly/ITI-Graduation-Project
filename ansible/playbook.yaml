@@ -561,30 +561,30 @@
       path: /usr/local/nagios/etc/nagios.cfg
       regexp: '#cfg_dir=/usr/local/nagios/etc/servers'
       replace: 'cfg_dir=/usr/local/nagios/etc/servers'
-
+    
    - name: comment /usr/local/nagios/etc/objects/localhost.cfg
      replace:
       path: /usr/local/nagios/etc/nagios.cfg
       regexp: 'cfg_file=/usr/local/nagios/etc/objects/localhost.cfg'
       replace: '#cfg_file=/usr/local/nagios/etc/objects/localhost.cfg'
-
+      
    - name: Set Host Global Event Handler
      replace:
       path: /usr/local/nagios/etc/nagios.cfg
-      regexp: '#global_host_event_handler=host_ticket=somecommand'
+      regexp: '#global_host_event_handler=somecommand'
       replace: 'global_host_event_handler=host_ticket'
-
+     tags: qq
    - name: Set Service Global Event Handler
      replace:
       path: /usr/local/nagios/etc/nagios.cfg
-      regexp: '^#global_service_event_handler=host_ticket=somecommand'
+      regexp: '#global_service_event_handler=somecommand'
       replace: 'global_service_event_handler=service_ticket'
-     tags: mm
-   - name: uncomment eventhandlers variable
-     replace:
-      path: /usr/local/nagios/etc/nagios.cfg
-      regexp: '^#$USER2$=/usr/local/nagios/libexec/eventhandlers$'
-      replace: '$USER2$=/usr/local/nagios/libexec/eventhandlers'
+     tags: qq
+   - name: Uncomment eventhandlers variable
+     lineinfile:
+      path: /usr/local/nagios/etc/resource.cfg
+      regexp: '/usr/local/nagios/libexec/eventhandlers$'
+      line: '$USER2$=/usr/local/nagios/libexec/eventhandlers'
 
    - name: node1.app1.project.com
      template:
@@ -593,7 +593,7 @@
       owner: nagios
       group: nagios
       mode: 0664
-     tags: nn
+     
    - name: node2.app1.project.com
      template:
       src: nagios-app2.cfg.j2
@@ -601,7 +601,7 @@
       owner: nagios
       group: nagios
       mode: 0664
-     tags: bb
+    
    - name: db.project.com
      template:
       src: nagios-db.cfg.j2
@@ -670,7 +670,6 @@
       - "set nss-config-dir=/etc/pki/nssdb/"
 
 #======================================== Nagios Centos Host-======================================================================
-
 - name: nagios host playbook
   hosts: nagios_centos
   tags: nagios-centos
@@ -680,7 +679,6 @@
      yum:
       name: epel-release
       state: latest
-     tags: host
 
    - name: installing packages
      yum:
@@ -693,26 +691,25 @@
       - sysstat
       - bc
       - git
-     tags: host
+
+   - name: Put SELinux in permissive mode
+     selinux:
+      policy: targeted
+      state: permissive
 
    - name: firewall configs
      firewalld:
-      port: "{{item}}"
+      port: 5666/tcp
       permanent: yes
       state: enabled
       immediate: yes
-     loop:
-      - 80/tcp
-      - 443/tcp
-      - 5666/tcp
-      - 22/t     tags: host
-     tags: host
 
 #========================================== Nagios Ubuntu Host ==============================================
 - name: Install Nagios on ubuntu
   hosts: nagios_ubuntu
   tags: nagios-ubuntu
   tasks:
+
    - name: install needed pacakges
      apt:
       name: "{{item}}"
@@ -729,5 +726,3 @@
       rule: allow
       state: enabled
       port: 5666
-     tags:
-      - nagios_ubuntu
