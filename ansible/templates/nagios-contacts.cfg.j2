@@ -28,13 +28,12 @@ define contact {
         contact_name                    nagiosadmin             ; Short name of user
         alias                           Nagios Admin            ; Full name of user
         email                           iti.project.2020@gmail.com ; <<***** CHANGE THIS TO YOUR EMAIL ADDRESS ******
-        service_notification_commands   notify-service-by-email ; nnotify-service-by-sms
-        host_notification_commands      notify-host-by-email ; nnotify-host-by-sms
+        service_notification_commands   notify-service-by-email 
+        host_notification_commands      notify-host-by-email 
         service_notification_options    w,u,c,r,f,s     ; Warning, unknown, critical, recovered, fail, schedule
         host_notification_options       d,u,r,f,s               ; down, unknown, recovered, fail, schedule
         service_notification_period     24x7                    ;24 Hours/7 Days
         host_notification_period        24x7
-        pager                           +201282160789
 }
 
 

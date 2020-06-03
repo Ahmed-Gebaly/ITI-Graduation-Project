@@ -1,18 +1,18 @@
 [apps]
-node1.app1.project.com
-node2.app1.project.com
+node1 	host_name=node1.app1.project.com
+node2 	host_name=node2.app1.project.com
 
 [lb]
-lb.project.com
+lb 	host_name=lb.project.com
 
 [db]
-db.project.com
+db	host_name=db.project.com
 
 [nagios]
-nagios.project.com
+nagios 	host_name=nagios.project.com
 
 [ansible]
-ansible.project.com
+ansible	host_name=ansible.project.com
 
 [nagios_ubuntu:children]
 apps

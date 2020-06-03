@@ -408,7 +408,8 @@
       - git
       - mailx
       - python-pip
-
+      - sshpass
+      - sysstat
    - name: Install python dependency
      pip:
       name: passlib
@@ -588,52 +589,19 @@
 
    - name: node1.app1.project.com
      template:
-      src: nagios-app1.cfg.j2
-      dest: /usr/local/nagios/etc/servers/app1.cfg
+      src: "{{ item }}"
+      dest: /usr/local/nagios/etc/servers/{{ item }}
       owner: nagios
       group: nagios
       mode: 0664
-     
-   - name: node2.app1.project.com
-     template:
-      src: nagios-app2.cfg.j2
-      dest: /usr/local/nagios/etc/servers/app2.cfg
-      owner: nagios
-      group: nagios
-      mode: 0664
-    
-   - name: db.project.com
-     template:
-      src: nagios-db.cfg.j2
-      dest: /usr/local/nagios/etc/servers/db.cfg
-      owner: nagios
-      group: nagios
-      mode: 0664
-
-   - name: lb.project.com
-     template:
-      src: nagios-lb.cfg.j2
-      dest: /usr/local/nagios/etc/servers/lb.cfg
-      owner: nagios
-      group: nagios
-      mode: 0664
-
-   - name: nagios.project.com
-     template:
-      src: nagios-nagios.cfg.j2
-      dest: /usr/local/nagios/etc/servers/nagios.cfg
-      owner: nagios
-      group: nagios
-      mode: 0664
-
-   - name: ansible.project.com
-     template:
-      src: nagios-ansible.cfg.j2
-      dest: /usr/local/nagios/etc/servers/ansible.cfg
-      owner: nagios
-      group: nagios
-      mode: 0664
-
+     loop:
+      - nagios-app1.cfg
+      - nagios-app2.cfg
+      - nagios-db.cfg
+      - nagios-lb.cfg
+      - nagios-nagios.cfg
+      - nagios-ansible.cfg
+     tags: ww 
    - name: configuring nagios command file
      template:
       src: nagios-commands.cfg.j2
@@ -668,6 +636,19 @@
       - "set smtp-auth-password=@itisa40"
       - "set ssl-verify=ignore"
       - "set nss-config-dir=/etc/pki/nssdb/"
+
+- name: nagios host playbook
+  hosts: all
+  tags: nagios-server
+  tasks:
+
+   - name: Add mem.py command
+     template:
+      src: mem.py-command.j2
+      dest: /usr/bin/mem.py
+      owner: root
+      group: root
+      mode: 0755
 
 #======================================== Nagios Centos Host-======================================================================
 - name: nagios host playbook
@@ -704,6 +685,34 @@
       state: enabled
       immediate: yes
 
+   - name: add nagios to sudoers
+     lineinfile:
+      path: /etc/sudoers
+      line: "{{ item }}"
+     loop:
+      - "nrpe ALL=(ALL) NOPASSWD: /usr/bin/systemctl"
+      - "nagios ALL=(ALL) NOPASSWD: /usr/bin/systemctl"
+
+   - name: Add mem.py command
+     template:
+      src: centos-nrpe.cfg.j2
+      dest: /etc/nagios/nrpe.cfg
+     
+   - name: Restart nrpe service
+     service:
+      name: nrpe
+      state: started
+      enabled: yes
+
+   - name: Add nagios plugins
+     template:
+      src: "{{ item }}"
+      dest: /usr/lib64/nagios/plugins/{{ item }}
+      mode: 0755
+     loop:
+      - check_mem
+      - check_iostat
+
 #========================================== Nagios Ubuntu Host ==============================================
 - name: Install Nagios on ubuntu
   hosts: nagios_ubuntu
@@ -726,3 +735,28 @@
       rule: allow
       state: enabled
       port: 5666
+
+   - name: add nagios to sudoers
+     lineinfile:
+      path: /etc/sudoers
+      line: "nagios ALL=(ALL) NOPASSWD: /usr/sbin/service"
+
+   - name: Add NRPE configuration
+     template:
+      src: ubuntu-nrpe.cfg.j2
+      dest: /etc/nagios/nrpe.cfg
+
+   - name: Restart nrpe service
+     service:
+      name: nagios-nrpe-server
+      state: started
+      enabled: yes
+
+   - name: Add nagios plugins
+     template:
+      src: "{{ item }}"
+      dest: /usr/lib/nagios/plugins/{{ item }}
+      mode: 0755
+     loop:
+      - check_mem
+      - check_iostat
