@@ -258,15 +258,49 @@ define command{
 		command_line $USER1$/check_nrpe -H $HOSTADDRESS$ -c $ARG1$
 }
 #----------------------------------------------------------------------------------------------
-# Restart HTTP command ------------------------------------------------------------------------
+# Check Nagios URI -----------------------------------------------------------------------------
+define command {
+                command_name    check_nagios
+                command_line    $USER1$/check_http -I $HOSTADDRESS$ -p $ARG1$ -u /nagios
+}
+# EH: Nagios Page  ------------------------------------------------------------------------------
 define command{
-                command_name restart_http
+                command_name restart_nagios
+                command_line /usr/bin/sudo /usr/bin/systemctl restart httpd && /usr/bin/sudo /usr/bin/systemctl restart nagios
+}
+# Check Local IO Disk --------------------------------------------------------------------------
+define command {
+
+ 	   	command_name    check_local_iostat
+    		command_line    $USER1$/check_iostat -d $ARG1$ -w $ARG2$ -c $ARG3$
+}
+# Check Local All Mounted Disks -----------------------------------------------------------------------
+define command {
+
+    		command_name    check_local_disk_all
+    		command_line    $USER1$/check_disk -w $ARG1$ -c $ARG2$ -A -u MB
+}
+# Check Local Memory ---------------------------------------------------------------------------
+define command {
+
+                command_name    check_local_mem
+                command_line    $USER1$/check_mem -w $ARG1$ -c $ARG2$
+}  
+# Restart HTTP.d command ------------------------------------------------------------------------
+define command{
+                command_name restart_httpd
                 command_line $USER1$/check_nrpe -H $HOSTADDRESS$ -c restart_httpd
 }
 # Restart Mysql command ---------------------------------------------------------------------
 define command{
                 command_name restart_mysql
                 command_line $USER1$/check_nrpe -H $HOSTADDRESS$ -c restart_mysql
+}
+
+# Restart Nginx command ------------------------------------------------------------------------
+define command{
+               command_name restart_nginx
+               command_line $USER1$/check_nrpe -H $HOSTADDRESS$ -c restart_nginx
 }
 #----------------------------------------------------------------------------------------------
 
@@ -280,4 +314,34 @@ define command {
    command_name    service_ticket
    command_line    $USER2$/service_ticket $SERVICEDESC$ $HOSTALIAS$ $HOSTNAME$ $HOSTADDRESS$ $HOSTSTATE$ $SERVICESTATE$ $SERVICESTATETYPE$ $LONGDATETIME$ $CONTACTALIAS:nagiosadmin$ $CONTACTEMAIL:nagiosadmin$
 }
-
+# EH: CPU More Info. command ----------------------------------------------------------------------
+define command {
+   command_name    cpu_info_more
+   command_line    $USER2$/cpu_info_more $SERVICEDESC$ $HOSTALIAS$ $HOSTNAME$ $HOSTADDRESS$ $HOSTSTATE$ $SERVICESTATE$ $SERVICESTATETYPE$ $LONGDATETIME$ $CONTACTALIAS:nagiosadmin$ $CONTACTEMAIL:nagiosadmin$
+}
+# EH: Memory More Info. command --------------------------------------------------------------------
+define command {
+   command_name    mem_info_more
+   command_line    $USER2$/mem_info_more $SERVICEDESC$ $HOSTALIAS$ $HOSTNAME$ $HOSTADDRESS$ $HOSTSTATE$ $SERVICESTATE$ $SERVICESTATETYPE$ $LONGDATETIME$ $CONTACTALIAS:nagiosadmin$ $CONTACTEMAIL:nagiosadmin$
+}
+# EH: Disk More Info. command ----------------------------------------------------------------------
+define command {
+   command_name    disk_info_more
+   command_line    $USER2$/disk_info_more $SERVICEDESC$ $HOSTALIAS$ $HOSTNAME$ $HOSTADDRESS$ $HOSTSTATE$ $SERVICESTATE$ $SERVICESTATETYPE$ $LONGDATETIME$ $CONTACTALIAS:nagiosadmin$ $CONTACTEMAIL:nagiosadmin$
+}
+# EH: SWAP More Info. command ---------------------------------------------------------------------
+define command {
+   command_name    swap_info_more
+   command_line    $USER2$/swap_info_more $SERVICEDESC$ $HOSTALIAS$ $HOSTNAME$ $HOSTADDRESS$ $HOSTSTATE$ $SERVICESTATE$ $SERVICESTATETYPE$ $LONGDATETIME$ $CONTACTALIAS:nagiosadmin$ $CONTACTEMAIL:nagiosadmin$
+}
+# EH: Ping More Info. command ---------------------------------------------------------------------
+define command {
+   command_name    ping_info_more
+   command_line    $USER2$/ping_info_more $SERVICEDESC$ $HOSTALIAS$ $HOSTNAME$ $HOSTADDRESS$ $HOSTSTATE$ $SERVICESTATE$ $SERVICESTATETYPE$ $LONGDATETIME$ $CONTACTALIAS:nagiosadmin$ $CONTACTEMAIL:nagiosadmin$
+}
+# EH: I/O More Info. command -----------------------------------------------------------------------
+define command {
+   command_name    io_info_more
+   command_line    $USER2$/io_info_more $SERVICEDESC$ $HOSTALIAS$ $HOSTNAME$ $HOSTADDRESS$ $HOSTSTATE$ $SERVICESTATE$ $SERVICESTATETYPE$ $LONGDATETIME$ $CONTACTALIAS:nagiosadmin$ $CONTACTEMAIL:nagiosadmin$
+}
+#-------------------------------------------------------------------------------------------------

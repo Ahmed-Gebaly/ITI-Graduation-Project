@@ -103,7 +103,7 @@ nrpe_group=nrpe
 #
 # NOTE: This option is ignored if NRPE is running under either inetd or xinetd
 
-allowed_hosts=127.0.0.1,::1,<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+allowed_hosts=127.0.0.1,::1
 
 
 
@@ -304,7 +304,7 @@ disable_syslog=0
 #command[check_total_procs]=/usr/lib64/nagios/plugins/check_procs -w 150 -c 200
 
 #--------------------------------------------------------------------------------------------------------------
-command[check_procs]= usr/lib64/nagios/plugins/check_procs -w 150 -c 200 -s RSZDT
+command[check_procs]=/usr/lib64/nagios/plugins/check_procs -w 150 -c 200 -s RSZDT
 command[check_load]=/usr/lib64/nagios/plugins/check_load -r -w .15,.10,.05 -c .30,.25,.20
 command[check_mem]=/usr/lib64/nagios/plugins/check_mem -w 90% -c 95%
 command[check_swap]=/usr/lib64/nagios/plugins/check_swap -w 20% -c 10%

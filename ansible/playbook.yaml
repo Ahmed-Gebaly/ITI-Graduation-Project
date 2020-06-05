@@ -410,6 +410,8 @@
       - python-pip
       - sshpass
       - sysstat
+      - iotop
+
    - name: Install python dependency
      pip:
       name: passlib
@@ -599,9 +601,16 @@
       - nagios-app2.cfg
       - nagios-db.cfg
       - nagios-lb.cfg
-      - nagios-nagios.cfg
       - nagios-ansible.cfg
-     tags: ww 
+
+   - name: node1.app1.project.com
+     template:
+      src: nagios-nagios.cfg
+      dest: /usr/local/nagios/etc/objects/localhost.cfg
+      owner: nagios
+      group: nagios
+      mode: 0664
+
    - name: configuring nagios command file
      template:
       src: nagios-commands.cfg.j2
@@ -616,6 +625,17 @@
      template:
       src: nagios-templates.cfg.j2
       dest: /usr/local/nagios/etc/objects/templates.cfg
+
+   - name: Add nagios plugins
+     template:
+      src: "{{ item }}"
+      dest: /usr/local/nagios/libexec/{{ item }}
+      owner: nagios
+      group: nagios
+      mode: 0755
+     loop:
+      - check_mem
+      - check_iostat
 
    - name: Restart Nagios Services
      command: "{{item}}"
@@ -672,6 +692,7 @@
       - sysstat
       - bc
       - git
+      - iotop
 
    - name: Put SELinux in permissive mode
      selinux:
@@ -693,16 +714,28 @@
       - "nrpe ALL=(ALL) NOPASSWD: /usr/bin/systemctl"
       - "nagios ALL=(ALL) NOPASSWD: /usr/bin/systemctl"
 
-   - name: Add mem.py command
+   - name: Add reconfigure nrpe.cfg 
      template:
       src: centos-nrpe.cfg.j2
       dest: /etc/nagios/nrpe.cfg
-     
-   - name: Restart nrpe service
-     service:
-      name: nrpe
-      state: started
-      enabled: yes
+
+   - name: Set Service Global Event Handler
+     replace:
+      path: /etc/nagios/nrpe.cfg
+      regexp: 'allowed_hosts=127.0.0.1,::1'
+      replace: 'allowed_hosts=127.0.0.1,::1,10.114.0.3'
+
+   - name: Set Service Global Event Handler
+     replace:
+      path: /etc/nagios/nrpe.cfg
+      regexp: '/plugins/check_iostat -d vda'
+      replace: '/plugins/check_iostat -d vda'
+
+   - name: Set Service Global Event Handler
+     replace:
+      path: /etc/nagios/nrpe.cfg
+      regexp: '-p /dev/vda1 -u GB'
+      replace: '-p /dev/vda1 -u GB'
 
    - name: Add nagios plugins
      template:
@@ -712,6 +745,12 @@
      loop:
       - check_mem
       - check_iostat
+
+   - name: Restart nrpe service
+     service:
+      name: nrpe
+      state: started
+      enabled: yes
 
 #========================================== Nagios Ubuntu Host ==============================================
 - name: Install Nagios on ubuntu
@@ -729,6 +768,7 @@
       - nagios-nrpe-server 
       - sysstat  
       - bc 
+      - iotop
      
    - name: Allow ports
      ufw:
@@ -746,6 +786,24 @@
       src: ubuntu-nrpe.cfg.j2
       dest: /etc/nagios/nrpe.cfg
 
+   - name: Set Service Global Event Handler
+     replace:
+      path: /etc/nagios/nrpe.cfg
+      regexp: 'allowed_hosts=127.0.0.1,::1'
+      replace: 'allowed_hosts=127.0.0.1,::1,10.114.0.3'
+
+   - name: Set Service Global Event Handler
+     replace:
+      path: /etc/nagios/nrpe.cfg
+      regexp: '/plugins/check_iostat -d vda'
+      replace: '/plugins/check_iostat -d vda'
+
+   - name: Set Service Global Event Handler
+     replace:
+      path: /etc/nagios/nrpe.cfg
+      regexp: '-p /dev/vda1 -u GB'
+      replace: '-p /dev/vda1 -u GB'
+
    - name: Restart nrpe service
      service:
       name: nagios-nrpe-server
@@ -760,3 +818,4 @@
      loop:
       - check_mem
       - check_iostat
+
