@@ -40,8 +40,8 @@ spec:
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: mysql-passs
-              key: PASSWORD
+              name: mysql-pass
+              key: password
         ports:
         - containerPort: 3306
           name: mysql
@@ -52,3 +52,4 @@ spec:
       - name: mysql-volume
         hostPath:
           path: /home/k8s/ITI-Graduation-Project/k8s-manifest/mysql-volume/
+          type: DirectoryOrCreate
