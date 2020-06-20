@@ -8,15 +8,63 @@ metadata:
 data:
   prometheus.rules: |-
     groups:
-    - name: devopscube demo alert
+    - name: alert group
       rules:
-      - alert: High Pod Memory
+
+      - alert: Target Inctance Down
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: slack
+        annotations:
+          summary: "Instance {{ $labels.instance }} down"
+          description: "{{$labels.instance}} of job {{$labels.job}} has been down for more than 5 minutes."
+
+      - alert: High Container Memory
         expr: sum(container_memory_usage_bytes) > 1
         for: 1m
         labels:
           severity: slack
         annotations:
-          summary: High Memory Usage
+          summary: High Container Memory Usage
+          description: "Pod {{$labels.pod_name}} have high memory usage"
+
+      - alert: High Container CPU
+        expr: sum(container_cpu_usage_seconds_total) > 1
+        for: 1m
+        labels:
+          severity: slack
+        annotations:
+          summary: High Container CPU Usage
+          description: "Pod {{$labels.pod_name}} have high CPU usage"
+
+      - alert: High Container SWAP
+        expr: sum(container_memory_swap) > 1
+        for: 1m
+        labels:
+          severity: slack
+        annotations:
+          summary: High Container SWAP Usage
+          description: "Pod {{$labels.pod_name}} have high SWAP usage"
+
+      - alert: HTTP Requests
+        expr: sum(http_request_total) > 1000
+        for: 10m
+        labels:
+          severity: slack
+        annotations:
+          summary: High HTTP Request
+          description: "{{$labels.handler}} of {{$labels.kubernetes_name}} have high {{$lables.method}} requests"
+
+      - alert: Deploymnet Replicas
+        expr: kube_deployment_status_replicas > 5
+        labels:
+          severity: slack
+        annotations:
+          summary: Deploymnet Replicas
+          description: "{{$labels.deployment}} had more than 5 replicas"
+
+          
   prometheus.yml: |-
     global:
       scrape_interval: 5s
