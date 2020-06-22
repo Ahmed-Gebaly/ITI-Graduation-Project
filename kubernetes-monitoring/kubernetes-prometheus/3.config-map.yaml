@@ -8,7 +8,7 @@ metadata:
 data:
   prometheus.rules: |-
     groups:
-    - name: alert group
+    - name: prometheus alert
       rules:
 
       - alert: Target Inctance Down
@@ -26,7 +26,7 @@ data:
         labels:
           severity: slack
         annotations:
-          summary: High Container Memory Usage
+          summary: High Container MemoryUsage
           description: "Pod {{$labels.pod_name}} have high memory usage"
 
       - alert: High Container CPU
@@ -36,7 +36,7 @@ data:
           severity: slack
         annotations:
           summary: High Container CPU Usage
-          description: "Pod {{$labels.pod_name}} have high CPU usage"
+          description: "Pod {{$labels.pod_name}} have high CPU usage"          
 
       - alert: High Container SWAP
         expr: sum(container_memory_swap) > 1
@@ -45,16 +45,7 @@ data:
           severity: slack
         annotations:
           summary: High Container SWAP Usage
-          description: "Pod {{$labels.pod_name}} have high SWAP usage"
-
-      - alert: HTTP Requests
-        expr: sum(http_request_total) > 1000
-        for: 10m
-        labels:
-          severity: slack
-        annotations:
-          summary: High HTTP Request
-          description: "{{$labels.handler}} of {{$labels.kubernetes_name}} have high {{$lables.method}} requests"
+          description: "Pod {{$labels.pod_name}} have high SWAP usage"          
 
       - alert: Deploymnet Replicas
         expr: kube_deployment_status_replicas > 5
@@ -62,9 +53,8 @@ data:
           severity: slack
         annotations:
           summary: Deploymnet Replicas
-          description: "{{$labels.deployment}} had more than 5 replicas"
+          description: "{{$labels.deployment}} had more than 5 replicas"          
 
-          
   prometheus.yml: |-
     global:
       scrape_interval: 5s

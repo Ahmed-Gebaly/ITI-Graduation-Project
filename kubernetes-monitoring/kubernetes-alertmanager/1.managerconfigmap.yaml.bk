@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+data:
+  config.yml: |-
+    global:
+      smtp_from: iti.project.2020@gmail.com
+      smtp_auth_username: iti.project.2020@gmail.com
+      smtp_auth_identity: iti.project.2020@gmail.com
+      smtp_auth_password: itisa2020
+      smtp_smarthost: smtp.gmail.com:587
+      smtp_require_tls: true
+    templates:
+    - '/etc/alertmanager-templates/*.tmpl'
+    route:
+      receiver: mail-alert
+      group_by: ['alertname', 'priority']
+      group_wait: 10s
+      repeat_interval: 10m
+      routes:
+        - receiver: slack-alert
+          match:
+            severity: slack
+          group_wait: 10s
+          repeat_interval: 1m
+ 
+    receivers:
+    - name: mail-alert
+      email_configs:
+      - to: iti.project.2020@gmail.com
+        send_resolved: false
+        from: iti.project.2020@gmail.com
+        smarthost: smtp.gmail.com:587
+        require_tls: false
+
+    - name: slack-alert
+      slack_configs:
+      - api_url: https://hooks.slack.com/services/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
+        channel: '#project'
+
+    - name: pager_alert
+      pagerduty_configs:
+      - service_key: 8a5eb2fb48ac48e39329cb821a0b90e3
