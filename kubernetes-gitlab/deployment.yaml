@@ -1,0 +1,47 @@
+---
+apiVersion: apps/v1 
+kind: Deployment
+metadata:
+  name: gitlab
+  labels:
+    app: gitlab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitlab
+  template:
+    metadata:
+      labels:
+        app: gitlab
+    spec:
+      containers:
+      - image: gitlab/gitlab-ce:latest
+        name: gitlab
+        env:
+        - name: GITLAB_OMNIBUS_CONFIG
+          value: external_url 'https://gitlab-iti.cloudns.cl'        
+        ports:
+        - containerPort: 443
+          name: gitlab
+        volumeMounts:
+        - name: gitlab-config
+          mountPath: /etc/gitlab
+        - name: gitlab-log
+          mountPath: /var/log/gitlab
+        - name: gitlab-data
+          mountPath: /var/opt/gitlab
+      volumes:
+      - name: gitlab-config
+        hostPath:
+          path: /srv/gitlab/config
+          type: DirectoryOrCreate
+      - name: gitlab-log
+        hostPath:
+          path: /srv/gitlab/log
+          type: DirectoryOrCreate
+      - name: gitlab-data
+        hostPath:
+          path: /srv/gitlab/data
+          type: DirectoryOrCreate
+          
